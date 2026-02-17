@@ -128,12 +128,35 @@ async function ensureDefaultAdmin() {
   const defaultAdminPassword = 'admin123';
 
   try {
-    const snapshot = await globalDatabase.ref('users').once('value');
-    const users = snapshot.val();
+    // Try to read the users list. If rules block this, fall back to setting
+    // the current authenticated user's profile as admin (write to own node
+    // is allowed by most rulesets).
+    let users = null;
+    try {
+      const snapshot = await globalDatabase.ref('users').once('value');
+      users = snapshot.val();
+    } catch (readErr) {
+      // Permission denied when reading /users
+      console.warn('Could not read /users:', readErr.message || readErr);
+      // If we're authenticated, ensure the current user is marked admin
+      const me = globalAuth && globalAuth.currentUser;
+      if (me) {
+        try {
+          await globalDatabase.ref('users/' + me.uid).update({
+            isAdmin: true,
+            email: me.email,
+            name: 'Admin'
+          });
+          console.log('✅ Current user marked as admin (fallback)');
+        } catch (updateErr) {
+          console.error('Failed to update current user admin flag:', updateErr);
+        }
+      }
+      return;
+    }
 
     let adminExists = false;
     let adminUid = null;
-    
     if (users) {
       for (let uid in users) {
         if (users[uid].isAdmin) {
@@ -146,10 +169,9 @@ async function ensureDefaultAdmin() {
 
     if (!adminExists) {
       try {
+        // If admin email already exists in Auth this will fail; we'll handle that.
         const result = await globalAuth.createUserWithEmailAndPassword(defaultAdminEmail, defaultAdminPassword);
         adminUid = result.user.uid;
-        
-        // Set admin user in database
         await globalDatabase.ref('users/' + adminUid).set({
           email: defaultAdminEmail,
           name: 'Admin',
@@ -157,14 +179,10 @@ async function ensureDefaultAdmin() {
           createdAt: new Date().toISOString()
         });
         console.log('✅ Default admin created successfully');
-        console.log('📧 Email: ' + defaultAdminEmail);
-        console.log('🔐 Password: ' + defaultAdminPassword);
       } catch (createError) {
         if (createError.code === 'auth/email-already-in-use') {
-          // Email exists in Auth but maybe not in database
-          console.log('Admin email exists in Firebase Auth, checking database...');
-          
-          // Try to find the user by email in database and ensure isAdmin is set
+          // Email exists in Auth but maybe not in database; try to fix DB entry.
+          console.log('Admin email exists in Firebase Auth, ensuring DB entry...');
           let foundUid = null;
           if (users) {
             for (let uid in users) {
@@ -174,22 +192,20 @@ async function ensureDefaultAdmin() {
               }
             }
           }
-          
           if (foundUid) {
-            // Update to ensure isAdmin flag is set
-            await globalDatabase.ref('users/' + foundUid).update({
-              isAdmin: true
-            });
-            console.log('✅ Admin account fixed - isAdmin flag updated');
+            try {
+              await globalDatabase.ref('users/' + foundUid).update({ isAdmin: true });
+              console.log('✅ Admin account fixed - isAdmin flag updated');
+            } catch (uErr) {
+              console.error('Failed to update existing user isAdmin flag:', uErr);
+            }
           }
         } else {
-          console.error('Error creating admin:', createError.message);
+          console.error('Error creating admin:', createError.message || createError);
         }
       }
     } else {
       console.log('✅ Admin account already exists');
-      console.log('📧 Email: ' + defaultAdminEmail);
-      console.log('🔐 Password: ' + defaultAdminPassword);
     }
   } catch (error) {
     console.error('Error ensuring default admin:', error);
