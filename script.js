@@ -55,7 +55,7 @@ function handleLogin(e) {
   const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
   if (!user) {
-    showError(errorEl, 'Email not found. Try admin@example.com / admin123 or refresh the page');
+    showError(errorEl, 'Email not found. Please create an account or try admin@example.com');
     return;
   }
 
