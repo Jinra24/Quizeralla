@@ -1,161 +1,152 @@
-// Login/Signup Functionality - CLEAN VERSION
-let users = [];
-let currentUser = null;
+// Firebase Authentication - Cloud-based Login
+let auth, database;
 
-window.addEventListener('load', function() {
-  users = JSON.parse(localStorage.getItem('users')) || [];
-  currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
-
-  // Create default admin if none exists
-  if (users.length === 0) {
-    const adminUser = {
-      id: Date.now(),
-      name: 'Admin User',
-      email: 'admin@example.com',
-      password: 'admin123',
-      isAdmin: true,
-      createdAt: new Date().toISOString()
-    };
-    users.push(adminUser);
-    localStorage.setItem('users', JSON.stringify(users));
+document.addEventListener('DOMContentLoaded', async () => {
+  // Wait for Firebase to initialize
+  let maxWait = 50; // 5 seconds
+  while ((!window.firebaseServices || !window.firebaseServices.auth) && maxWait > 0) {
+    await new Promise(r => setTimeout(r, 100));
+    maxWait--;
   }
 
-  // Redirect if already logged in
-  if (currentUser) {
-    if (currentUser.isAdmin) {
-      window.location.href = 'admin-dashboard.html';
-    } else {
-      window.location.href = 'dashboard.html';
-    }
+  if (!window.firebaseServices) {
+    console.error('Firebase not initialized. Check firebase-config.js');
+    showError(document.getElementById('loginError'), 'Configuration error. Please contact administrator.');
     return;
   }
 
-  // Attach event listeners
-  const loginForm = document.getElementById('loginForm');
+  auth = window.firebaseServices.auth;
+  database = window.firebaseServices.database;
 
+  // Check if user is already logged in
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      database.ref('users/' + user.uid).once('value')
+        .then(snapshot => {
+          const userData = snapshot.val();
+          if (userData && userData.isAdmin) {
+            window.location.href = 'admin-dashboard.html';
+          } else {
+            window.location.href = 'dashboard.html';
+          }
+        })
+        .catch(err => console.error('Error fetching user data:', err));
+    }
+  });
+
+  const loginForm = document.getElementById('loginForm');
   if (loginForm) {
     loginForm.addEventListener('submit', handleLogin);
   }
+
+  // Ensure default admin exists
+  ensureDefaultAdmin();
 });
 
-function handleLogin(e) {
+// Handle Login with Firebase
+async function handleLogin(e) {
   e.preventDefault();
   clearErrors();
 
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
-  const errorEl = document.getElementById('loginError');
+  const errorElement = document.getElementById('loginError');
 
   if (!email || !password) {
-    showError(errorEl, 'Please fill in all fields');
+    showError(errorElement, 'Please enter email and password');
     return;
   }
 
-  users = JSON.parse(localStorage.getItem('users')) || [];
-  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  try {
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    const user = userCredential.user;
 
-  if (!user) {
-    showError(errorEl, 'Email not found. Please create an account or try admin@example.com');
-    return;
-  }
+    const snapshot = await database.ref('users/' + user.uid).once('value');
+    const userData = snapshot.val();
 
-  if (user.password !== password) {
-    showError(errorEl, 'Incorrect password');
-    return;
-  }
+    if (!userData) {
+      showError(errorElement, 'User profile not found');
+      await auth.signOut();
+      return;
+    }
 
-  // Login successful
-  currentUser = user;
-  localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    localStorage.setItem('currentUser', JSON.stringify({
+      uid: user.uid,
+      email: user.email,
+      name: userData.name,
+      isAdmin: userData.isAdmin
+    }));
 
-  if (currentUser.isAdmin) {
-    window.location.href = 'admin-dashboard.html';
-  } else {
-    window.location.href = 'dashboard.html';
+    if (userData.isAdmin) {
+      window.location.href = 'admin-dashboard.html';
+    } else {
+      window.location.href = 'dashboard.html';
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    if (error.code === 'auth/user-not-found') {
+      showError(errorElement, 'Account not found');
+    } else if (error.code === 'auth/wrong-password') {
+      showError(errorElement, 'Incorrect password');
+    } else if (error.code === 'auth/invalid-email') {
+      showError(errorElement, 'Invalid email address');
+    } else {
+      showError(errorElement, error.message);
+    }
   }
 }
 
-function handleSignup(e) {
-  e.preventDefault();
-  clearErrors();
+// Ensure default admin exists in Firebase
+async function ensureDefaultAdmin() {
+  const defaultAdminEmail = 'admin@example.com';
+  const defaultAdminPassword = 'admin123';
 
-  const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim();
-  const password = document.getElementById('signupPassword').value;
-  const confirmPassword = document.getElementById('confirmPassword').value;
-  const errorEl = document.getElementById('signupError');
+  try {
+    const snapshot = await database.ref('users').once('value');
+    const users = snapshot.val();
 
-  if (!name || !email || !password || !confirmPassword) {
-    showError(errorEl, 'All fields are required');
-    return;
+    let adminExists = false;
+    if (users) {
+      for (let uid in users) {
+        if (users[uid].isAdmin) {
+          adminExists = true;
+          break;
+        }
+      }
+    }
+
+    if (!adminExists) {
+      try {
+        const result = await auth.createUserWithEmailAndPassword(defaultAdminEmail, defaultAdminPassword);
+        await database.ref('users/' + result.user.uid).set({
+          email: defaultAdminEmail,
+          name: 'Admin',
+          isAdmin: true,
+          createdAt: new Date().toISOString()
+        });
+        console.log('Default admin created');
+      } catch (createError) {
+        if (createError.code !== 'auth/email-already-in-use') {
+          console.log('Admin exists or error:', createError.message);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error with default admin:', error);
   }
-
-  if (password.length < 6) {
-    showError(errorEl, 'Password must be at least 6 characters');
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    showError(errorEl, 'Passwords do not match');
-    return;
-  }
-
-  users = JSON.parse(localStorage.getItem('users')) || [];
-  
-  if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-    showError(errorEl, 'Email already registered');
-    return;
-  }
-
-  const newUser = {
-    id: Date.now(),
-    name: name,
-    email: email,
-    password: password,
-    isAdmin: false,
-    createdAt: new Date().toISOString()
-  };
-
-  users.push(newUser);
-  localStorage.setItem('users', JSON.stringify(users));
-
-  currentUser = newUser;
-  localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-  document.getElementById('signupForm').reset();
-  window.location.href = 'dashboard.html';
 }
 
-function switchToSignup(event) {
-  if (event) event.preventDefault();
-  document.getElementById('loginPage').classList.remove('active');
-  document.getElementById('signupPage').classList.add('active');
-  clearErrors();
-}
-
-function switchToLogin(event) {
-  if (event) event.preventDefault();
-  document.getElementById('loginPage').classList.add('active');
-  document.getElementById('signupPage').classList.remove('active');
-  clearErrors();
-}
-
+// Helper functions
 function showError(element, message) {
   if (!element) return;
   element.textContent = message;
-  element.classList.add('show');
+  element.style.display = 'block';
 }
 
 function clearErrors() {
-  const loginError = document.getElementById('loginError');
-  const signupError = document.getElementById('signupError');
-
-  if (loginError) {
-    loginError.textContent = '';
-    loginError.classList.remove('show');
-  }
-  if (signupError) {
-    signupError.textContent = '';
-    signupError.classList.remove('show');
-  }
+  const errorElements = document.querySelectorAll('.error-message');
+  errorElements.forEach(el => {
+    el.textContent = '';
+    el.style.display = 'none';
+  });
 }

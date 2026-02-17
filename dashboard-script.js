@@ -1,20 +1,38 @@
-// User Dashboard Script
+// User Dashboard Script - Firebase Backend
 
+let auth, database;
 let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
 let currentQuiz = null;
 let quizAnswers = {};
 
-// Check if user is logged in
-document.addEventListener('DOMContentLoaded', () => {
-  if (!currentUser) {
-    // Redirect to login if not logged in
+// Initialize Firebase and check access
+document.addEventListener('DOMContentLoaded', async () => {
+  // Wait for Firebase to initialize
+  let maxWait = 50;
+  while ((!window.firebaseServices || !window.firebaseServices.auth) && maxWait > 0) {
+    await new Promise(r => setTimeout(r, 100));
+    maxWait--;
+  }
+
+  if (!window.firebaseServices) {
+    console.error('Firebase not initialized');
     window.location.href = 'index.html';
     return;
   }
 
-  // Initialize dashboard
-  initializeDashboard();
-  setupQuizListener();
+  auth = window.firebaseServices.auth;
+  database = window.firebaseServices.database;
+
+  // Check if user is logged in
+  auth.onAuthStateChanged(user => {
+    if (!user || !currentUser) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    initializeDashboard();
+    setupQuizListener();
+  });
 });
 
 function initializeDashboard() {
@@ -594,7 +612,14 @@ function shuffleArray(array) {
 }
 
 function logout() {
-  currentUser = null;
-  localStorage.removeItem('currentUser');
-  window.location.href = 'index.html';
+  auth.signOut()
+    .then(() => {
+      localStorage.removeItem('currentUser');
+      window.location.href = 'index.html';
+    })
+    .catch(err => {
+      console.error('Logout error:', err);
+      localStorage.removeItem('currentUser');
+      window.location.href = 'index.html';
+    });
 }
