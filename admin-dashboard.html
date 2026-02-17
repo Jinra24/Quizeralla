@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Practice App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Admin Dashboard Page -->
+  <div class="dashboard-container admin-container">
+    <nav class="navbar admin-navbar">
+      <div class="nav-brand">Admin Panel</div>
+      <div class="nav-user">
+        <span class="admin-badge">Admin</span>
+        <span id="adminDisplay"></span>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+      </div>
+    </nav>
+    
+    <div class="dashboard-content admin-content">
+      <h1>Admin Dashboard</h1>
+      <p>System Overview & Management</p>
+      
+      <div class="admin-stats">
+        <div class="stat-card">
+          <div class="stat-number" id="totalUsers">0</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="totalAdmins">0</div>
+          <div class="stat-label">Total Admins</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="activeUsers">0</div>
+          <div class="stat-label">Active Today</div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h2>User Management</h2>
+        <div class="user-table-container">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Joined</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody">
+              <!-- Users will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h2>Create New Account</h2>
+        <form id="userCreateForm" class="admin-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newUserName">Full Name</label>
+              <input type="text" id="newUserName" placeholder="Enter full name" required />
+            </div>
+            <div class="form-group">
+              <label for="newUserEmail">Email</label>
+              <input type="email" id="newUserEmail" placeholder="Enter email" required />
+            </div>
+            <div class="form-group">
+              <label for="newUserPassword">Password</label>
+              <input type="password" id="newUserPassword" placeholder="Enter password" required />
+            </div>
+            <div class="form-group">
+              <label for="userRole">Role</label>
+              <select id="userRole" required>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <button type="submit" class="btn-admin-action">Create Account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-dashboard-script.js"></script>
+</body>
+</html>

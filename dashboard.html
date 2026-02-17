@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Practice App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- User Dashboard Page -->
+  <div class="dashboard-container">
+    <nav class="navbar">
+      <div class="nav-brand">Practice App</div>
+      <div class="nav-user">
+        <span id="userDisplay"></span>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+      </div>
+    </nav>
+    
+    <div class="dashboard-content">
+      <h1>Dashboard</h1>
+      <p>Welcome, <strong id="welcomeName"></strong>!</p>
+      
+      <div class="quiz-section">
+        <h2>📝 Quiz Reviewer</h2>
+        <p>Upload a file (PDF, DOCX, or TXT) to automatically generate quiz questions</p>
+        
+        <div class="quiz-upload">
+          <input type="file" id="quizFile" accept=".txt,.pdf,.docx" />
+          <div id="fileStatus"></div>
+        </div>
+
+        <div id="questionOptions" style="display: none; margin-top: 20px;">
+          <label>Number of Questions:</label>
+          <select id="numQuestions" style="margin-right: 20px;">
+            <option value="5">5 Questions</option>
+            <option value="8" selected>8 Questions</option>
+            <option value="10">10 Questions</option>
+            <option value="15">15 Questions</option>
+            <option value="20">20 Questions</option>
+            <option value="25">25 Questions</option>
+            <option value="30">30 Questions</option>
+            <option value="35">35 Questions</option>
+            <option value="40">40 Questions</option>
+            <option value="45">45 Questions</option>
+            <option value="50">50 Questions</option>
+          </select>
+          <button class="btn-generate" onclick="generateQuiz()">Generate Quiz</button>
+        </div>
+
+        <div id="quizContainer" style="display: none; margin-top: 30px;"></div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <h2>Profile</h2>
+          <p>Manage your profile settings</p>
+          <p class="card-info">Email: <span id="profileEmail"></span></p>
+        </div>
+        
+        <div class="dashboard-card">
+          <h2>Statistics</h2>
+          <p>Your learning progress</p>
+          <p class="card-info">Active since today</p>
+        </div>
+        
+        <div class="dashboard-card">
+          <h2>Settings</h2>
+          <p>Update your preferences</p>
+          <p class="card-info">Customize your experience</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="dashboard-script.js"></script>
+  <!-- PDF.js for PDF support -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</body>
+</html>
