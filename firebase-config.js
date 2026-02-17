@@ -1,13 +1,12 @@
 // Firebase Configuration
-// Replace with your Firebase project credentials
 const firebaseConfig = {
-  apiKey: "AIzaSyD_REPLACE_WITH_YOUR_API_KEY",
-  authDomain: "your-project.firebaseapp.com",
-  databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-messaging-sender-id",
-  appId: "your-app-id"
+  apiKey: "AIzaSyBTIqGWFbb8C-bMJEk8KXTzHBDvzd1atGE",
+  authDomain: "quizeralla.firebaseapp.com",
+  databaseURL: "https://quizeralla-default-rtdb.firebaseio.com",
+  projectId: "quizeralla",
+  storageBucket: "quizeralla.firebasestorage.app",
+  messagingSenderId: "237289223240",
+  appId: "1:237289223240:web:3fedc5517e620c91b1d47d"
 };
 
 // Initialize Firebase
