@@ -44,8 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     loginForm.addEventListener('submit', handleLogin);
   }
 
-  // Ensure default admin exists
-  ensureDefaultAdmin();
 });
 
 // Handle Login with Firebase
@@ -66,13 +64,23 @@ async function handleLogin(e) {
     const userCredential = await globalAuth.signInWithEmailAndPassword(email, password);
     const user = userCredential.user;
 
-    const snapshot = await globalDatabase.ref('users/' + user.uid).once('value');
-    const userData = snapshot.val();
+    let snapshot = await globalDatabase.ref('users/' + user.uid).once('value');
+    let userData = snapshot.val();
 
+    // If user doesn't exist in database, create their profile
     if (!userData) {
-      showError(errorElement, 'User profile not found');
-      await globalAuth.signOut();
-      return;
+      // Check if this is the admin account (first login)
+      const isAdmin = email === 'admin@example.com';
+      
+      userData = {
+        email: user.email,
+        name: email === 'admin@example.com' ? 'Admin' : email.split('@')[0],
+        isAdmin: isAdmin,
+        createdAt: new Date().toISOString()
+      };
+      
+      await globalDatabase.ref('users/' + user.uid).set(userData);
+      console.log('✅ User profile created in database');
     }
 
     localStorage.setItem('currentUser', JSON.stringify({
@@ -81,6 +89,11 @@ async function handleLogin(e) {
       name: userData.name,
       isAdmin: userData.isAdmin
     }));
+
+    // Ensure default admin exists (after successful authentication)
+    if (userData.isAdmin) {
+      await ensureDefaultAdmin();
+    }
 
     if (userData.isAdmin) {
       window.location.href = 'admin-dashboard.html';
