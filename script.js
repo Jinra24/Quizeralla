@@ -1,27 +1,28 @@
 // Firebase Authentication - Cloud-based Login
-let auth, database;
+
+let globalAuth, globalDatabase;
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Wait for Firebase to initialize
-  let maxWait = 50; // 5 seconds
-  while ((!window.firebaseServices || !window.firebaseServices.auth) && maxWait > 0) {
+  let maxWait = 50;
+  while (!window.firebaseServices || !window.firebaseServices.auth && maxWait > 0) {
     await new Promise(r => setTimeout(r, 100));
     maxWait--;
   }
 
-  if (!window.firebaseServices) {
-    console.error('Firebase not initialized. Check firebase-config.js');
+  if (!window.firebaseServices || !window.firebaseServices.auth) {
+    console.error('Firebase not initialized');
     showError(document.getElementById('loginError'), 'Configuration error. Please contact administrator.');
     return;
   }
 
-  auth = window.firebaseServices.auth;
-  database = window.firebaseServices.database;
+  globalAuth = window.firebaseServices.auth;
+  globalDatabase = window.firebaseServices.database;
 
   // Check if user is already logged in
-  auth.onAuthStateChanged(user => {
+  globalAuth.onAuthStateChanged(user => {
     if (user) {
-      database.ref('users/' + user.uid).once('value')
+      globalDatabase.ref('users/' + user.uid).once('value')
         .then(snapshot => {
           const userData = snapshot.val();
           if (userData && userData.isAdmin) {
@@ -58,15 +59,15 @@ async function handleLogin(e) {
   }
 
   try {
-    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    const userCredential = await globalAuth.signInWithEmailAndPassword(email, password);
     const user = userCredential.user;
 
-    const snapshot = await database.ref('users/' + user.uid).once('value');
+    const snapshot = await globalDatabase.ref('users/' + user.uid).once('value');
     const userData = snapshot.val();
 
     if (!userData) {
       showError(errorElement, 'User profile not found');
-      await auth.signOut();
+      await globalAuth.signOut();
       return;
     }
 
@@ -96,13 +97,21 @@ async function handleLogin(e) {
   }
 }
 
+// Global reference for logout
+function logout() {
+  globalAuth.signOut().then(() => {
+    localStorage.removeItem('currentUser');
+    window.location.href = 'index.html';
+  }).catch(err => console.error('Logout error:', err));
+}
+
 // Ensure default admin exists in Firebase
 async function ensureDefaultAdmin() {
   const defaultAdminEmail = 'admin@example.com';
   const defaultAdminPassword = 'admin123';
 
   try {
-    const snapshot = await database.ref('users').once('value');
+    const snapshot = await globalDatabase.ref('users').once('value');
     const users = snapshot.val();
 
     let adminExists = false;
@@ -117,8 +126,8 @@ async function ensureDefaultAdmin() {
 
     if (!adminExists) {
       try {
-        const result = await auth.createUserWithEmailAndPassword(defaultAdminEmail, defaultAdminPassword);
-        await database.ref('users/' + result.user.uid).set({
+        const result = await globalAuth.createUserWithEmailAndPassword(defaultAdminEmail, defaultAdminPassword);
+        await globalDatabase.ref('users/' + result.user.uid).set({
           email: defaultAdminEmail,
           name: 'Admin',
           isAdmin: true,

@@ -1,4 +1,4 @@
-// Firebase Configuration
+// Firebase Configuration (Compat Version)
 const firebaseConfig = {
   apiKey: "AIzaSyBTIqGWFbb8C-bMJEk8KXTzHBDvzd1atGE",
   authDomain: "quizeralla.firebaseapp.com",
@@ -9,15 +9,30 @@ const firebaseConfig = {
   appId: "1:237289223240:web:3fedc5517e620c91b1d47d"
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+// Wait for Firebase to load, then initialize
+function initializeFirebase() {
+  if (typeof firebase !== 'undefined') {
+    try {
+      // Initialize if not already initialized
+      if (!firebase.apps || firebase.apps.length === 0) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      // Create global services object for easy access
+      window.firebaseServices = {
+        auth: firebase.auth(),
+        database: firebase.database()
+      };
+      console.log('Firebase initialized successfully');
+    } catch (error) {
+      console.error('Firebase initialization error:', error);
+      // Retry if there was an error
+      setTimeout(initializeFirebase, 100);
+    }
+  } else {
+    // Retry if Firebase SDK hasn't loaded yet
+    setTimeout(initializeFirebase, 100);
+  }
+}
 
-// Initialize Firebase Authentication and Realtime Database
-const auth = firebase.auth();
-const database = firebase.database();
-
-// Export for use in other scripts
-window.firebaseServices = {
-  auth,
-  database
-};
+// Start initialization
+initializeFirebase();
