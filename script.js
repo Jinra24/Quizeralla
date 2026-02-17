@@ -119,10 +119,13 @@ async function ensureDefaultAdmin() {
     const users = snapshot.val();
 
     let adminExists = false;
+    let adminUid = null;
+    
     if (users) {
       for (let uid in users) {
         if (users[uid].isAdmin) {
           adminExists = true;
+          adminUid = uid;
           break;
         }
       }
@@ -131,21 +134,52 @@ async function ensureDefaultAdmin() {
     if (!adminExists) {
       try {
         const result = await globalAuth.createUserWithEmailAndPassword(defaultAdminEmail, defaultAdminPassword);
-        await globalDatabase.ref('users/' + result.user.uid).set({
+        adminUid = result.user.uid;
+        
+        // Set admin user in database
+        await globalDatabase.ref('users/' + adminUid).set({
           email: defaultAdminEmail,
           name: 'Admin',
           isAdmin: true,
           createdAt: new Date().toISOString()
         });
-        console.log('Default admin created');
+        console.log('✅ Default admin created successfully');
+        console.log('📧 Email: ' + defaultAdminEmail);
+        console.log('🔐 Password: ' + defaultAdminPassword);
       } catch (createError) {
-        if (createError.code !== 'auth/email-already-in-use') {
-          console.log('Admin exists or error:', createError.message);
+        if (createError.code === 'auth/email-already-in-use') {
+          // Email exists in Auth but maybe not in database
+          console.log('Admin email exists in Firebase Auth, checking database...');
+          
+          // Try to find the user by email in database and ensure isAdmin is set
+          let foundUid = null;
+          if (users) {
+            for (let uid in users) {
+              if (users[uid].email === defaultAdminEmail) {
+                foundUid = uid;
+                break;
+              }
+            }
+          }
+          
+          if (foundUid) {
+            // Update to ensure isAdmin flag is set
+            await globalDatabase.ref('users/' + foundUid).update({
+              isAdmin: true
+            });
+            console.log('✅ Admin account fixed - isAdmin flag updated');
+          }
+        } else {
+          console.error('Error creating admin:', createError.message);
         }
       }
+    } else {
+      console.log('✅ Admin account already exists');
+      console.log('📧 Email: ' + defaultAdminEmail);
+      console.log('🔐 Password: ' + defaultAdminPassword);
     }
   } catch (error) {
-    console.error('Error with default admin:', error);
+    console.error('Error ensuring default admin:', error);
   }
 }
 
