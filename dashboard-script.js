@@ -24,15 +24,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   database = window.firebaseServices.database;
 
   // Check if user is logged in
-  auth.onAuthStateChanged(user => {
-    if (!user || !currentUser) {
-      window.location.href = 'index.html';
-      return;
-    }
+  if (!currentUser) {
+    window.location.href = 'index.html';
+    return;
+  }
 
-    initializeDashboard();
-    setupQuizListener();
+  // Set up auth state listener only to detect logouts
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      // User was logged out
+      localStorage.removeItem('currentUser');
+      window.location.href = 'index.html';
+    }
   });
+
+  initializeDashboard();
+  setupQuizListener();
 });
 
 function initializeDashboard() {

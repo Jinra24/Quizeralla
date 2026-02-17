@@ -20,7 +20,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   globalDatabase = window.firebaseServices.database;
 
   // Check if user is already logged in
+  let authCheckExecuted = false;
   globalAuth.onAuthStateChanged(user => {
+    if (authCheckExecuted) return; // Prevent multiple redirects
+    authCheckExecuted = true;
+    
     if (user) {
       globalDatabase.ref('users/' + user.uid).once('value')
         .then(snapshot => {
